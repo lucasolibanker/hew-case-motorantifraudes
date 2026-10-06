@@ -1,0 +1,11 @@
+fastapi==0.142.2
+# Pin direto. O FastAPI só exige starlette>=0.46, e o 0.41.3 que vinha
+# transitivo tinha SSRF, ReDoS e os CWE-770/706. 1.7.0 passa do fixedIn 1.3.1.
+starlette==1.7.0
+uvicorn==0.34.2
+redis==5.2.1
+psycopg[binary]==3.2.6
+pydantic-settings==2.8.1
+PyYAML==6.0.2
+httpx==0.28.1
+jinja2==3.1.6

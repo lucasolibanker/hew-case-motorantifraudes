@@ -1,0 +1,64 @@
+# Laboratório local. Segredos vêm do .env (não commitado).
+# Senha do Postgres aqui é só deste compose, igual ao .env.example.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: antifraud
+      POSTGRES_PASSWORD: antifraud
+      POSTGRES_DB: antifraud
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U antifraud -d antifraud"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://antifraud:antifraud@postgres:5432/antifraud
+      PSP_BASE_URL: http://psp-mock:8001
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  psp-mock:
+    build: ./psp_mock
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      WEBHOOK_URL: http://api:8000/webhooks/psp
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 3s
+      timeout: 5s
+      retries: 20

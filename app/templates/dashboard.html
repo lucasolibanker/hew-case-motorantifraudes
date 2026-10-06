@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Antifraude</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; color: #1c1c1c; background: #f7f7f5; color-scheme: light; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border-bottom: 1px solid #ccc; padding: 0.45rem; text-align: left; vertical-align: top; }
+    .deny { color: #8a1f1f; font-weight: 600; }
+    .challenge { color: #8a5a00; font-weight: 600; }
+    .approve { color: #0b6b2f; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Transações</h1>
+  <p>O cartão aparece só com os últimos 4. O IP observado é o do socket. O IP declarado é o que veio no JSON.</p>
+  {% if not rows %}
+  <p>Nenhuma transação ainda.</p>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>Quando</th>
+        <th>Cliente</th>
+        <th>Valor</th>
+        <th>Cartão</th>
+        <th>Score</th>
+        <th>Decisão</th>
+        <th>Estado</th>
+        <th>Razões</th>
+        <th>IPs</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.created_at }}</td>
+        <td>{{ row.customer_id }}</td>
+        <td>{{ row.amount }} {{ row.currency }}</td>
+        <td>****{{ row.pan_last4 }}</td>
+        <td>{{ row.risk_score }}</td>
+        <td class="{{ row.decision }}">{{ row.decision }}</td>
+        <td>{{ row.status }}</td>
+        <td>
+          {% for reason in row.reasons %}
+            {{ reason.rule }} (+{{ reason.weight }}): {{ reason.detail }}<br>
+          {% else %}
+            —
+          {% endfor %}
+        </td>
+        <td>observado {{ row.observed_ip }}<br>declarado {{ row.client_ip }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</body>
+</html>

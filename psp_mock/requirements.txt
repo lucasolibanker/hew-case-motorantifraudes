@@ -1,0 +1,5 @@
+fastapi==0.142.2
+# Mesmo pin da API. Sem isto o resolver pode voltar a um Starlette vulnerável.
+starlette==1.7.0
+uvicorn==0.34.2
+httpx==0.28.1

@@ -1,0 +1,6 @@
+# Domínios que um cliente pode criar aos montes para zerar o contador por e-mail.
+# Lista mínima de laboratório, não um feed de produção.
+mailinator.com
+guerrillamail.com
+tempmail.com
+10minutemail.com

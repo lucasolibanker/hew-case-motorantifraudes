@@ -1,0 +1,46 @@
+# Pesos e limiares do motor. Mudar o comportamento é editar este arquivo,
+# não caçar número espalhado no Python.
+#
+# Score = soma dos pesos das regras que dispararam, com teto 100.
+# score < approve_below          -> approve  (pode cobrar)
+# approve_below <= score < deny  -> challenge (step-up, sem cobrança ainda)
+# score >= deny_at_or_above      -> deny (não chama o PSP)
+
+thresholds:
+  approve_below: 30
+  deny_at_or_above: 70
+
+velocity:
+  # Sozinha, uma violação de velocity nega. O caso pede que o card testing
+  # e a rajada passem a ser barrados, não só desafiados.
+  weight: 70
+  window_seconds: 600
+  # 5º cartão distinto no mesmo IP, dentro da janela, dispara.
+  max_distinct_cards_per_ip: 5
+  max_attempts_per_email: 8
+  # Endurecido: o mesmo cartão não se salva trocando de IP ou de e-mail.
+  # A 8ª tentativa do fingerprint na janela dispara.
+  max_attempts_per_card: 8
+  max_attempts_per_bin: 12
+
+card_testing:
+  weight: 70
+  window_seconds: 600
+  # Valores até R$ 10,00 contam como tentativa baixa.
+  low_amount_cents: 1000
+  max_low_amount_attempts: 5
+  max_distinct_cards_per_bin: 4
+  # Razão de negações anteriores no BIN. Não inclui a tentativa atual.
+  max_deny_ratio: 0.6
+  min_samples_for_ratio: 5
+
+geo_bin:
+  # Sozinha, cai na faixa de challenge (30–69). É o que abre o fluxo de OTP.
+  weight: 40
+
+zscore:
+  # Sozinho, um outlier desafia. Não nega: estatística com pouca base erra.
+  weight: 40
+  # Menos que isto de tentativas anteriores: peso zero (cold start).
+  min_history: 5
+  z_threshold: 3.0

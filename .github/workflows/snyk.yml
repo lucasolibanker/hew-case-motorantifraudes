@@ -1,0 +1,174 @@
+# Esteira Snyk. O repositório no GitHub precisa desta pasta na raiz:
+# o Actions só lê .github/workflows ali.
+#
+# O check quebra em high/critical de dependência, de Snyk Code e das
+# camadas que os Dockerfiles adicionam. A base python:3.12-slim entra
+# no log e no monitor, e não quebra o PR: o motivo está no README.
+# SNYK_TOKEN é secret do repositório. Não vai neste arquivo.
+
+name: Snyk
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: snyk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SNYK_ORG: lucasolibanker
+
+jobs:
+  open-source:
+    name: Open Source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+
+      - name: Instalar dependências para o resolver
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt -r psp_mock/requirements.txt
+
+      - name: snyk test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "Secret SNYK_TOKEN ausente. Settings > Secrets and variables > Actions. O valor é o API token da conta Snyk."
+            exit 1
+          fi
+          snyk test --all-projects \
+            --org="$SNYK_ORG" \
+            --severity-threshold=high \
+            --sarif-file-output=snyk-sca.sarif
+
+      - name: snyk monitor
+        if: github.event_name == 'push'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk monitor --all-projects --org="$SNYK_ORG"
+
+      - name: Publicar SARIF
+        if: always() && !cancelled() && hashFiles('snyk-sca.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          sarif_file: snyk-sca.sarif
+          category: snyk-open-source
+
+  code:
+    name: Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+
+      - name: snyk code test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "Secret SNYK_TOKEN ausente. Settings > Secrets and variables > Actions. O valor é o API token da conta Snyk."
+            exit 1
+          fi
+          snyk code test \
+            --org="$SNYK_ORG" \
+            --severity-threshold=high \
+            --sarif-file-output=snyk-code.sarif
+
+      - name: Publicar SARIF
+        if: always() && !cancelled() && hashFiles('snyk-code.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          sarif_file: snyk-code.sarif
+          category: snyk-code
+
+  container:
+    name: Container
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            image: motor-antifraudes-api:ci
+            file: Dockerfile
+            context: .
+          - name: psp-mock
+            image: motor-antifraudes-psp-mock:ci
+            file: psp_mock/Dockerfile
+            context: psp_mock
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+
+      - name: Build
+        run: docker build -t ${{ matrix.image }} -f ${{ matrix.file }} ${{ matrix.context }}
+
+      - name: Gate das camadas da aplicação
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "Secret SNYK_TOKEN ausente. Settings > Secrets and variables > Actions. O valor é o API token da conta Snyk."
+            exit 1
+          fi
+          snyk container test ${{ matrix.image }} \
+            --file=${{ matrix.file }} \
+            --exclude-base-image-vulns \
+            --severity-threshold=high \
+            --org="$SNYK_ORG" \
+            --sarif-file-output=snyk-container-${{ matrix.name }}.sarif
+
+      - name: Base image no log
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk container test ${{ matrix.image }} \
+            --file=${{ matrix.file }} \
+            --severity-threshold=high \
+            --org="$SNYK_ORG" \
+            --sarif-file-output=snyk-container-${{ matrix.name }}-base.sarif
+
+      - name: Monitor da imagem inteira
+        if: github.event_name == 'push'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk container monitor ${{ matrix.image }} \
+            --file=${{ matrix.file }} \
+            --org="$SNYK_ORG" \
+            --project-name=motor-antifraudes-${{ matrix.name }}
+
+      - name: Publicar SARIF da aplicação
+        if: always() && !cancelled() && hashFiles(format('snyk-container-{0}.sarif', matrix.name)) != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          sarif_file: snyk-container-${{ matrix.name }}.sarif
+          category: snyk-container-${{ matrix.name }}
+
+      - name: Publicar SARIF da base
+        if: always() && !cancelled() && hashFiles(format('snyk-container-{0}-base.sarif', matrix.name)) != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          sarif_file: snyk-container-${{ matrix.name }}-base.sarif
+          category: snyk-container-${{ matrix.name }}-base
