@@ -28,6 +28,12 @@ jobs:
   open-source:
     name: Open Source
     runs-on: ubuntu-latest
+    env:
+      # A flag unified-test-api da org manda o CLI novo para
+      # POST /rest/orgs/:id/tests, que responde "Enrichment of Test Failed"
+      # sem apontar pacote. false força /v1/test-dep-graph, o caminho
+      # legado que já passou no scan local.
+      INTERNAL_SNYK_CLI_USE_UNIFIED_TEST_API_FOR_OS_CLI_TEST: "false"
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
@@ -50,18 +56,18 @@ jobs:
             echo "Secret SNYK_TOKEN ausente. Settings > Secrets and variables > Actions. O valor é o API token da conta Snyk."
             exit 1
           fi
-          # --all-projects manda os três manifests num depgraph só e o
-          # CLI responde SNYK-CLI-0000 (Enrichment of Test Failed). Um
-          # arquivo por vez, com o python já instalado, evita isso.
+          snyk version
+          # requirements-dev.txt não se chama requirements.txt: sem
+          # --package-manager=pip o CLI não detecta o ecossistema.
           mkdir -p snyk-sca
           status=0
           for spec in \
-            "requirements.txt snyk-sca/api.sarif motor-antifraudes-api" \
-            "requirements-dev.txt snyk-sca/dev.sarif motor-antifraudes-dev" \
-            "psp_mock/requirements.txt snyk-sca/psp.sarif motor-antifraudes-psp"
+            "requirements.txt snyk-sca/api.sarif" \
+            "requirements-dev.txt snyk-sca/dev.sarif" \
+            "psp_mock/requirements.txt snyk-sca/psp.sarif"
           do
             set -- $spec
-            snyk test --file="$1" --command=python3 \
+            snyk test --file="$1" --package-manager=pip --command=python3 \
               --org="$SNYK_ORG" \
               --severity-threshold=high \
               --sarif-file-output="$2" || status=1
@@ -73,9 +79,9 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk monitor --file=requirements.txt --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-api
-          snyk monitor --file=requirements-dev.txt --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-dev
-          snyk monitor --file=psp_mock/requirements.txt --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-psp
+          snyk monitor --file=requirements.txt --package-manager=pip --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-api
+          snyk monitor --file=requirements-dev.txt --package-manager=pip --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-dev
+          snyk monitor --file=psp_mock/requirements.txt --package-manager=pip --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-psp
 
       - name: Publicar SARIF
         if: always() && !cancelled() && hashFiles('snyk-sca/*.sarif') != ''
