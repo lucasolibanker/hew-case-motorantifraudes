@@ -50,23 +50,39 @@ jobs:
             echo "Secret SNYK_TOKEN ausente. Settings > Secrets and variables > Actions. O valor é o API token da conta Snyk."
             exit 1
           fi
-          snyk test --all-projects \
-            --org="$SNYK_ORG" \
-            --severity-threshold=high \
-            --sarif-file-output=snyk-sca.sarif
+          # --all-projects manda os três manifests num depgraph só e o
+          # CLI responde SNYK-CLI-0000 (Enrichment of Test Failed). Um
+          # arquivo por vez, com o python já instalado, evita isso.
+          mkdir -p snyk-sca
+          status=0
+          for spec in \
+            "requirements.txt snyk-sca/api.sarif motor-antifraudes-api" \
+            "requirements-dev.txt snyk-sca/dev.sarif motor-antifraudes-dev" \
+            "psp_mock/requirements.txt snyk-sca/psp.sarif motor-antifraudes-psp"
+          do
+            set -- $spec
+            snyk test --file="$1" --command=python3 \
+              --org="$SNYK_ORG" \
+              --severity-threshold=high \
+              --sarif-file-output="$2" || status=1
+          done
+          exit "$status"
 
       - name: snyk monitor
         if: github.event_name == 'push'
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk monitor --all-projects --org="$SNYK_ORG"
+        run: |
+          snyk monitor --file=requirements.txt --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-api
+          snyk monitor --file=requirements-dev.txt --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-dev
+          snyk monitor --file=psp_mock/requirements.txt --command=python3 --org="$SNYK_ORG" --project-name=motor-antifraudes-psp
 
       - name: Publicar SARIF
-        if: always() && !cancelled() && hashFiles('snyk-sca.sarif') != ''
+        if: always() && !cancelled() && hashFiles('snyk-sca/*.sarif') != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
         with:
-          sarif_file: snyk-sca.sarif
+          sarif_file: snyk-sca
           category: snyk-open-source
 
   code:
