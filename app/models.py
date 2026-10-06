@@ -1,7 +1,7 @@
 """Corpo do POST /payments e da verificação.
 
 extra=forbid: campo que não conhecemos não entra calado. Um `country`
-existe de propósito, e o código endurecido não o usa como sinal.
+existe de propósito. Com o controle ligado, ele não entra no score.
 """
 
 from __future__ import annotations

@@ -54,10 +54,10 @@ class RedisStore:
     ) -> Claim:
         """Reserva o direito de cobrar esta chave.
 
-        Endurecido: SET NX na trava. Só um request segue.
-        Ingênuo: lê, espera, grava sem NX. Quem leu junto também segue.
-        A espera existe para o PoC ser estável. No mundo real a janela é
-        o tempo entre o GET e o SET, menor, mas existente sob carga.
+        Com a trava: SET NX. Só um request segue.
+        Sem a trava: lê, espera, grava sem NX. Quem leu junto também segue.
+        A espera existe para o script pegar as duas no meio. No uso real a
+        janela é o tempo entre o GET e o SET, menor, mas existente sob carga.
         """
         result_key = f"idempotency:{key}"
         lock_key = f"idempotency:{key}:lock"

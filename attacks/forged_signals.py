@@ -3,8 +3,8 @@
 O cliente manda país US, IP americano e BIN 400000, mas o socket está no
 laboratório (tratado como BR) e o PAN realmente começa com 400000.
 
-Ingênuo: acredita no país do JSON e aprova.
-Endurecido: ignora país e IP do JSON, deriva o BIN do PAN, vê BR contra US
+Sem o controle: acredita no país do JSON e aprova.
+Com o controle: ignora país e IP do JSON, tira o BIN do PAN, vê BR contra US
 e desafia. Um segundo caso faz o mesmo com e-mail descartável.
 """
 
@@ -28,19 +28,19 @@ geo_body = lib.payment_body(
     ip="198.51.100.8",
     country="US",
 )
-naive_geo = once("geo ingênuo", geo_body, naive=True)
-if naive_geo["decision"] != "approve":
-    print("o modo ingênuo não acreditou no país forjado")
+geo_aberto = once("geo sem controle", geo_body, naive=True)
+if geo_aberto["decision"] != "approve":
+    print("sem o controle, não acreditou no país forjado")
     raise SystemExit(1)
 
 lib.reset_lab()
 geo_body["card"] = lib.pan("400000")
-hardened_geo = once("geo endurecido", geo_body, naive=False)
-if hardened_geo["decision"] != "challenge":
-    print("o modo endurecido não desafiou o BIN americano")
+geo_fechado = once("geo com controle", geo_body, naive=False)
+if geo_fechado["decision"] != "challenge":
+    print("com o controle, não desafiou o BIN americano")
     raise SystemExit(1)
-if not any(item["rule"] == "geo_bin" for item in hardened_geo["reasons"]):
-    print(hardened_geo["reasons"])
+if not any(item["rule"] == "geo_bin" for item in geo_fechado["reasons"]):
+    print(geo_fechado["reasons"])
     raise SystemExit(1)
 
 lib.reset_lab()
@@ -51,15 +51,15 @@ mail_body = lib.payment_body(
     email="pessoa@mailinator.com",
     ip="203.0.113.10",
 )
-naive_mail = once("e-mail ingênuo", mail_body, naive=True)
-if naive_mail["decision"] != "approve":
-    print("o modo ingênuo pontuou o e-mail descartável")
+mail_aberto = once("e-mail sem controle", mail_body, naive=True)
+if mail_aberto["decision"] != "approve":
+    print("sem o controle, pontuou o e-mail descartável")
     raise SystemExit(1)
 
 lib.reset_lab()
 mail_body["card"] = lib.pan("411111")
-hardened_mail = once("e-mail endurecido", mail_body, naive=False)
-if hardened_mail["decision"] != "challenge":
-    print("o modo endurecido não desafiou o descartável")
+mail_fechado = once("e-mail com controle", mail_body, naive=False)
+if mail_fechado["decision"] != "challenge":
+    print("com o controle, não desafiou o descartável")
     raise SystemExit(1)
 print("\ndefesa: país, IP e e-mail do JSON não são observação")

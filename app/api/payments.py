@@ -270,7 +270,7 @@ def verify_payment(payment_id: str, payload: VerifyIn, request: Request):
             payment_id,
             "approve",
             previous_score,
-            [{"rule": "step_up", "weight": 0, "detail": "verificação aceita no modo ingênuo, sem validar o OTP"}],
+            [{"rule": "step_up", "weight": 0, "detail": "verificação aceita com o controle desligado, sem validar o OTP"}],
         )
         called = notify_psp(
             settings,
@@ -279,7 +279,7 @@ def verify_payment(payment_id: str, payload: VerifyIn, request: Request):
             currency=row["currency"].strip(),
             idempotency_key=row["idempotency_key"],
         )
-        log.info("verify ingênuo payment_id=%s", payment_id)
+        log.info("verify sem controle payment_id=%s", payment_id)
         return {"id": payment_id, "status": "verified", "psp": "called" if called else "unavailable"}
 
     if status != "challenged":

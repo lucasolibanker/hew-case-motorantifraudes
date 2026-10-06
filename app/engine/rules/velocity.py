@@ -33,8 +33,8 @@ def velocity_reason(snapshot: Snapshot, rule: dict) -> Reason | None:
         tripped.append(
             f"{snapshot.email_attempts} tentativas do e-mail na janela (máximo {max_email})"
         )
-    # Modo ingênuo: não olha o fingerprint global nem o BIN.
-    # Trocar IP e e-mail zera as únicas chaves que esta versão consulta.
+    # Controle desligado: não olha o fingerprint global nem o BIN.
+    # Trocar IP e e-mail zera as únicas chaves que essa passagem consulta.
     if not snapshot.naive_velocity:
         max_card = int(rule["max_attempts_per_card"])
         max_bin = int(rule["max_attempts_per_bin"])

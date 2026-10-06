@@ -1,7 +1,7 @@
-"""Parte 4. Corrida na Idempotency-Key.
+"""Parte 4. Duas requisições ao mesmo tempo, mesma Idempotency-Key.
 
-Ingênuo: várias threads passam do GET antes do SET e cada uma cobra.
-Endurecido: SET NX, um dono só, os outros esperam a mesma resposta.
+Sem a trava: várias threads passam do GET antes do SET e cada uma cobra.
+Com a trava: SET NX, um dono só, os outros esperam a mesma resposta.
 """
 
 import threading
@@ -27,7 +27,7 @@ def burst(naive: bool) -> None:
     for thread in threads:
         thread.join()
 
-    label = "ingênuo" if naive else "endurecido"
+    label = "sem trava" if naive else "com trava"
     ids = set()
     for index, response in enumerate(results, start=1):
         lib.show(f"corrida {label} thread {index}", f"chave {key}", response)
@@ -38,10 +38,10 @@ def burst(naive: bool) -> None:
     print(f"ids distintos: {len(ids)} | cobranças no mock: {charges}")
     if naive:
         if len(ids) < 2 and charges < 2:
-            print("a corrida ingênua não furou a idempotência")
+            print("sem a trava, as duas requisições não furaram a idempotência")
             raise SystemExit(1)
     elif len(ids) != 1 or charges != 1:
-        print("a versão endurecida deixou passar mais de uma cobrança")
+        print("com a trava, passou mais de uma cobrança")
         raise SystemExit(1)
 
 

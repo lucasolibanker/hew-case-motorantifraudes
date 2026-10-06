@@ -1,6 +1,6 @@
 """Z-score do valor contra o histórico do customer_id.
 
-Cold start (poucas tentativas) contribui zero. Desvio zero também:
+Com pouco histórico, peso zero. Desvio zero também:
 cinco compras iguais não têm escala para chamar a sexta de outlier.
 Usa o desvio populacional das tentativas anteriores, sem incluir a atual,
 senão o próprio outlier puxa a média e se esconde.

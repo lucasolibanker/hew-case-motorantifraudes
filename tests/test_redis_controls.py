@@ -50,7 +50,7 @@ def test_set_nx_so_um_dono(fake_redis):
     assert sum(item.owner for item in results) == 1
 
 
-def test_ingenuo_dois_donos_na_corrida(fake_redis, monkeypatch):
+def test_sem_trava_dois_donos_ao_mesmo_tempo(fake_redis, monkeypatch):
     barrier = threading.Barrier(2)
 
     def _sleep(_seconds):

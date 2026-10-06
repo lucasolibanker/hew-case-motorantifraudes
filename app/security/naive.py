@@ -1,7 +1,7 @@
-"""Interruptor da versão ingênua.
+"""Interruptor que desliga um controle.
 
-NAIVE_MODE liga todos os buracos. O header X-Naive-Controls liga um só,
-para o script mostrar a brecha e, no request seguinte, a correção, sem
+NAIVE_MODE desliga todos. O header X-Naive-Controls desliga um só,
+para o script mostrar o furo e, no request seguinte, a correção, sem
 subir dois processos.
 
 ALLOW_DEMO_HEADER precisa ser false fora do laboratório. Com ele ligado,

@@ -48,13 +48,13 @@ def test_pagamento_limpo_aprova(rules):
     assert reasons == []
 
 
-def test_velocity_ingenuo_ignora_o_mesmo_cartao(rules):
+def test_velocity_sem_controle_ignora_o_mesmo_cartao(rules):
     decision, _, reasons = score(_snapshot(card_attempts=50, bin_attempts=50, naive_velocity=True), rules)
     assert decision == "approve"
     assert reasons == []
 
 
-def test_velocity_endurecido_nega_o_mesmo_cartao(rules):
+def test_velocity_com_controle_nega_o_mesmo_cartao(rules):
     limit = int(rules["velocity"]["max_attempts_per_card"])
     decision, _, reasons = score(_snapshot(card_attempts=limit), rules)
     assert decision == "deny"
@@ -88,7 +88,7 @@ def test_zscore_outlier_desafia(rules):
     assert any(item.rule == "zscore" for item in reasons)
 
 
-def test_sinais_forjados_sao_a_fronteira():
+def test_sinais_forjados_dependem_do_que_o_servidor_ve():
     tables = load_tables(
         "config/bins.csv",
         "config/ip_countries.csv",
@@ -105,11 +105,11 @@ def test_sinais_forjados_sao_a_fronteira():
         email="a@mailinator.com",
         country="US",
     )
-    naive = resolve_signals(payload, "127.0.0.1", tables, naive_signals=True, naive_velocity=False)
-    hardened = resolve_signals(payload, "127.0.0.1", tables, naive_signals=False, naive_velocity=False)
-    assert naive.ip_country == "US"
-    assert naive.disposable_email is False
-    assert hardened.ip_country == "BR"
-    assert hardened.bin_country == "US"
-    assert hardened.scoring_bin == "400000"
-    assert hardened.disposable_email is True
+    aberto = resolve_signals(payload, "127.0.0.1", tables, naive_signals=True, naive_velocity=False)
+    fechado = resolve_signals(payload, "127.0.0.1", tables, naive_signals=False, naive_velocity=False)
+    assert aberto.ip_country == "US"
+    assert aberto.disposable_email is False
+    assert fechado.ip_country == "BR"
+    assert fechado.bin_country == "US"
+    assert fechado.scoring_bin == "400000"
+    assert fechado.disposable_email is True

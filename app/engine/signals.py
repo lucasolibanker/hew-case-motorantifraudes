@@ -1,7 +1,7 @@
-"""Fronteira entre o que o cliente afirma e o que o servidor observa.
+"""Separa o que o cliente afirma do que o servidor observa.
 
-A evasão de sinais forjados mora aqui, não na comparação de países.
-A comparação é honesta. O buraco é alimentar essa comparação com o IP,
+O ataque dos sinais forjados está aqui, não na comparação de países.
+A comparação em si está certa. O furo é comparar usando o IP,
 o BIN e o país que vieram no JSON.
 """
 
@@ -30,10 +30,10 @@ def resolve_signals(
     naive_signals: bool,
     naive_velocity: bool,
 ) -> ResolvedSignals:
-    # Velocity ingênuo também chaveia pelo IP do JSON. Se usássemos o IP do
-    # socket, trocar o campo `ip` não escaparia do contador por IP — e o
-    # PoC de estilhaçar velocity não teria o que mostrar. O contador global
-    # do cartão é a correção quando o IP de origem é realmente outro.
+    # Com o velocity desligado, a conta também usa o IP do JSON. Se usássemos
+    # o IP do socket, trocar o campo `ip` não escaparia do contador por IP,
+    # e o script do cartão em vários IPs não teria o que mostrar. O contador
+    # global do cartão é a correção quando o IP de origem é realmente outro.
     trust_client_ip = naive_signals or naive_velocity
     scoring_ip = payload.ip if trust_client_ip else observed_ip
     scoring_bin = payload.bin if naive_signals else payload.card[:6]
@@ -44,8 +44,8 @@ def resolve_signals(
     else:
         ip_country = tables.country_for_ip(scoring_ip)
 
-    # E-mail descartável só pesa na versão endurecida. Na ingênua, o
-    # atacante abre caixa em mailinator e o motor trata como cliente novo.
+    # E-mail descartável só pesa com o controle ligado. Desligado, o
+    # atacante abre caixa no mailinator e o motor trata como cliente novo.
     disposable = False if naive_signals else tables.is_disposable(payload.email)
     return ResolvedSignals(
         scoring_ip=scoring_ip,

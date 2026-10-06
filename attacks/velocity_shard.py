@@ -1,8 +1,8 @@
-"""Parte 4. Estilhaçar o velocity.
+"""Parte 4. O mesmo cartão em vários IPs.
 
 O mesmo cartão, valor normal, um IP e um e-mail novos a cada request.
-Ingênuo: cada chave fica em 1, abaixo do limite, tudo aprova.
-Endurecido: o fingerprint do cartão é global. Trocar IP não zera a conta.
+Sem o controle: cada chave fica em 1, abaixo do limite, tudo aprova.
+Com o controle: o fingerprint do cartão é global. Trocar IP não zera a conta.
 """
 
 import lib
@@ -13,7 +13,7 @@ def run(naive: bool) -> None:
     total = limit + 2
     card = lib.pan("510510")
     decisions = []
-    label = "ingênuo" if naive else "endurecido"
+    label = "sem controle" if naive else "com controle"
     for index in range(1, total + 1):
         body = lib.payment_body(
             card=card,
@@ -35,15 +35,15 @@ def run(naive: bool) -> None:
         decisions.append(response.json())
     if naive:
         if any(item["decision"] != "approve" for item in decisions):
-            print("o modo ingênuo barrou uma tentativa que deveria passar")
+            print("sem o controle, barrou uma tentativa que deveria passar")
             raise SystemExit(1)
         return
     if decisions[0]["decision"] != "approve":
-        print("a primeira tentativa endurecida já não aprovou:", decisions[0])
+        print("a primeira tentativa, com o controle, já não aprovou:", decisions[0])
         raise SystemExit(1)
     last = decisions[-1]
     if last["decision"] != "deny":
-        print("a rajada endurecida não negou")
+        print("a rajada, com o controle, não negou")
         raise SystemExit(1)
     if not any(item["rule"] == "velocity" for item in last["reasons"]):
         print("negou por outra regra:", last["reasons"])

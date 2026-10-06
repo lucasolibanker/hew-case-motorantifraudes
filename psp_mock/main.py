@@ -2,7 +2,7 @@
 
 Ele é burro de propósito. Um PSP de verdade também deduplicaria pela
 Idempotency-Key. Se este mock deduplicasse, um gateway quebrado pareceria
-seguro e o PoC da corrida não mostraria a segunda cobrança. A defesa tem
+seguro e o script das duas requisições ao mesmo tempo não mostraria a segunda cobrança. A defesa tem
 que estar no nosso serviço. O mock só registra cada chamada e devolve um
 webhook assinado com o corpo exato que ele enviou.
 """
