@@ -55,8 +55,6 @@ O z-score usa a média e o desvio das tentativas anteriores, inclusive as negada
 
 ## Parte 4
 
-Rascunho para reescrever com as suas palavras antes do envio. O avaliador vai perguntar por que você atacou isto.
-
 Os quatro furos convivem no mesmo processo. `NAIVE_MODE=true` abre todos. Com `ALLOW_DEMO_HEADER=true`, o header `X-Naive-Controls` abre um: `idempotency`, `challenge`, `velocity`, `signals`. Os scripts abrem o furo, mostram o dinheiro passando, repetem sem o header e mostram a recusa. Fora daqui os dois ficam `false`. Header de demonstração ligado em produção é um jeito de desligar o antifraude.
 
 ### Corrida na idempotência
@@ -65,7 +63,7 @@ Dois checkouts com a mesma chave, disparados juntos. Com o controle desligado, o
 
 O custo da correção é baixo. `SET NX` é uma ida ao Redis. O que continua aberto, e está comentado no código, é o processo morrer depois de cobrar e antes de gravar a resposta. Aí um retry pode cobrar de novo. Fechar isso de verdade é o PSP também deduplicar pela mesma chave. O mock não faz isso, senão o script mentiria.
 
-Não há `UNIQUE` em `idempotency_key` no Postgres. A constraint esconderia o furo do Redis e o script não mostraria a segunda cobrança. Em produção eu usaria as duas travas.
+Não há `UNIQUE` em `idempotency_key` no Postgres. A constraint esconderia o furo do Redis e o script não mostraria a segunda cobrança. Em produção, usar as duas travas.
 
 ### Abuso do challenge
 
@@ -202,7 +200,7 @@ Três checks quebram o build.
 
 `starlette` está pinado em 1.7.0 nos dois requirements. O FastAPI 0.115.12 puxava 0.41.3, com SSRF (CVE-2026-48818), ReDoS (CVE-2025-62727) e os CWE-770/706 (CVE-2026-54283, CVE-2026-54282). O fixedIn mais alto era 1.3.1. O FastAPI 0.142.2 aceita o 1.7.0. O scan de Open Source em high, depois do pin, voltou limpo. O mesmo para as dependências Python dentro das imagens.
 
-A base `python:3.12-slim` é Debian 13. No scan de 6/10/2026 ela tinha 3 critical e 12 high, todos de pacote do SO (zlib, libstdc++, acl, attr), zero nas libs Python da imagem. A alternativa que o Snyk ofereceu foi `python:3.15-rc-alpine`, release candidate, e ainda com high. Não troco a base por um RC e não crio `.snyk` para ignorar: ignore some o achado. O job de container faz dois testes. O que quebra o PR usa `--exclude-base-image-vulns`. O outro imprime a base inteira e segue (`continue-on-error`), e o SARIF sobe se o repositório tiver code scanning. No push da branch padrão, `snyk container monitor` manda a imagem inteira para o painel, base incluída, para o alerta de quando sair patch.
+A base `python:3.12-slim` é Debian 13. No scan de 6/10/2026 ela tinha 3 critical e 12 high, todos de pacote do SO (zlib, libstdc++, acl, attr), zero nas libs Python da imagem. A alternativa que o Snyk ofereceu foi `python:3.15-rc-alpine`, release candidate, e ainda com high. A base não muda para um RC e não há `.snyk` para ignorar: ignorar esconderia o achado. O job de container faz dois testes. O que quebra o PR usa `--exclude-base-image-vulns`. O outro imprime a base inteira e segue (`continue-on-error`), e o SARIF sobe se o repositório tiver code scanning. No push da branch padrão, `snyk container monitor` manda a imagem inteira para o painel, base incluída, para o alerta de quando sair patch.
 
 Open Source força o teste legado. O CLI novo, com a flag `unified-test-api` ligada na org, chama `POST /rest/orgs/:id/tests` e devolve SNYK-CLI-0000 (`Enrichment of Test Failed`) sem apontar pacote. O job exporta `INTERNAL_SNYK_CLI_USE_UNIFIED_TEST_API_FOR_OS_CLI_TEST=false`, que volta para `/v1/test-dep-graph`, o mesmo caminho que já passou limpo no scan local. `requirements-dev.txt` leva `--package-manager=pip` porque o CLI só detecta sozinho um arquivo chamado `requirements.txt`. `snyk monitor` roda só no push da branch padrão, para cada branch não virar um projeto novo no painel.
 
